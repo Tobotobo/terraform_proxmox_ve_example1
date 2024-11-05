@@ -1,19 +1,3 @@
-terraform {
-  required_providers {
-    proxmox = {
-      source  = "telmate/proxmox"
-      version = "3.0.1-rc4"
-    }
-  }
-}
-
-provider "proxmox" {
-  pm_user        = "terraform-prov@pve"
-  pm_password    = "terraform"
-  pm_api_url     = "http://XXXXX:8006/api2/json"
-  pm_tls_insecure = true
-}
-
 resource "proxmox_cloud_init_disk" "ci" {
   name     = "${var.vm_name}"
   pve_node = "${var.vm_node}"
@@ -121,5 +105,5 @@ resource "proxmox_vm_qemu" "vm" {
     bridge   = "vmbr0"
     firewall = false
   }
-  ipconfig0 = "ip=${var.vm_ip_address}"
+  ipconfig0 = "${var.vm_ipconfig0}"
 }
