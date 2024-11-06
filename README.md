@@ -1,12 +1,12 @@
 # terraform_proxmox_ve_example1
 
-## 一応動かせるがまだガバガバ
-
 ## 概要
 * Terraform を使って Proxmox VE に QEMU の VM インスタンスを立ち上げる
 * Cloud-init を使う
 * proxmox_cloud_init_disk を使う 
 * 簡単に環境を量産する
+* リソース定義の共通化は Modules で実施  
+  ※ Workspace は切り替え忘れの事故や環境の構成が一見してわからない懸念があったので不採用
 
 Proxmox Virtual Environment  
 https://www.proxmox.com/en/proxmox-virtual-environment/overview  
@@ -26,7 +26,20 @@ https://registry.terraform.io/providers/Telmate/proxmox/latest/docs
 Terraform × cloud-init で VM のセットアップをいい感じにする話  
 https://speakerdeck.com/yusuke427/terraform-x-cloud-init-de-vm-nosetutoatupuwoiigan-zinisuruhua  
 
-## 利用イメージ
+## 環境
+* Proxmox VE 8.2.2
+* Terraform v1.9.8 on windows_amd64
+* Terraform provider plugin for Proxmox 3.0.1-rc4
+
+## ファイル・フォルダ構成
+![alt text](docs/images/image02.drawio.png)
+
+## 利用方法
+
+### 前提
+* [AlmaLinux 8 の汎用クラウド(Cloud-init)イメージをテンプレートに登録](https://github.com/Tobotobo/proxmox-ve_qemu_almalinux-8/blob/main/docs/001_create_template_almalinux_8_cloud_image.md) が実施済みであること
+* [操作対象の Proxmox VE に Terraform 用のユーザーとロールを作成](#操作対象の-proxmox-ve-に-terraform-用のユーザーとロールを作成) が実施済みであること
+
 ### 共通設定
 * common.template.tfvars をコピーし common.tfvars にリネーム
 * common.tfvars を適当に設定
@@ -34,24 +47,17 @@ https://speakerdeck.com/yusuke427/terraform-x-cloud-init-de-vm-nosetutoatupuwoii
 * secrets.tfvars を適当に設定
 
 ### 環境作成
+![alt text](docs/images/image01.drawio.png)
 * enviroments/template/almalinux_8_git_docker_template を enviroments フォルダ内にコピー
-* フォルダ名を適当に変更 ※例:pve-vm-100
+* フォルダ名を適当に変更 ※例:pve-vm-taro
 * フォルダ内の terraform.template.tfvars を terraform.tfvars にリネーム
-* terraform.tfvars を設定に設定
+* terraform.tfvars を適当に設定
 * フォルダ内で `terraform init` を実行
 * フォルダ内で `terraform plan -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"` を実行
 * フォルダ内で `terraform apply -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"` を実行
 
 ### 破棄する場合  
 * フォルダ内で `terraform destroy -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"` を実行 
-
-## 環境
-* Proxmox VE 8.2.2
-* Terraform v1.9.8 on windows_amd64
-* Terraform provider plugin for Proxmox 3.0.1-rc4
-
-## 前提
-* [AlmaLinux 8 の汎用クラウド(Cloud-init)イメージをテンプレートに登録](https://github.com/Tobotobo/proxmox-ve_qemu_almalinux-8/blob/main/docs/001_create_template_almalinux_8_cloud_image.md) が実施済みであること
 
 ## 詳細
 
@@ -89,61 +95,5 @@ pveum user add terraform-prov@pve --password ${user_pass}
 pveum aclmod / -user terraform-prov@pve -role TerraformProv
 ```
 
-### provider の proxmox の接続情報を設定　※以下はメンテナンス中
-※本来は環境変数などで設定すべきだが今はガバガバ
-
-modules\create_vm\main.tf
-```ruby
-provider "proxmox" {
-  pm_user        = "terraform-prov@pve"
-  pm_password    = "terraform"
-  pm_api_url     = "http://XXXXX:8006/api2/json"
-  pm_tls_insecure = true
-}
-```
-
-### 環境を作成
-※今はガバガバ
-
-#### vm_node を環境に合わせて変更  
-environments\pve-vm-001\main.tf  
-environments\pve-vm-002\main.tf  
-```ruby
-    vm_node       = "pve"
-```
-
-#### 作成した環境のフォルダに移動
-
-※以下は pve-vm-001 の例
-```
-cd ./environments/pve-vm-001
-```
-
-#### 初期化
-```
-terraform init
-```
-
-#### 適用した際に何が変わるか確認
-```
-terraform plan
-```
-
-#### 問題なければ適用
-```
-terraform apply
-```
-
-#### 破棄する場合
-```
-terraform destroy
-```
-
-## メモ
-```
-terraform plan -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"
-terraform apply -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"
-terraform destroy -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"
-```
-
-ssh user001@pve-vm-001
+### Cloud-Init 設定フロー図
+![alt text](docs/images/image03.drawio.png)
