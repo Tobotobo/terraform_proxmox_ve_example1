@@ -26,6 +26,25 @@ https://registry.terraform.io/providers/Telmate/proxmox/latest/docs
 Terraform × cloud-init で VM のセットアップをいい感じにする話  
 https://speakerdeck.com/yusuke427/terraform-x-cloud-init-de-vm-nosetutoatupuwoiigan-zinisuruhua  
 
+## 利用イメージ
+### 共通設定
+* common.template.tfvars をコピーし common.tfvars にリネーム
+* common.tfvars を適当に設定
+* secrets.template.tfvars をコピーし secrets.tfvars にリネーム
+* secrets.tfvars を適当に設定
+
+### 環境作成
+* enviroments/template/almalinux_8_git_docker_template を enviroments フォルダ内にコピー
+* フォルダ名を適当に変更 ※例:pve-vm-100
+* フォルダ内の terraform.template.tfvars を terraform.tfvars にリネーム
+* terraform.tfvars を設定に設定
+* フォルダ内で `terraform init` を実行
+* フォルダ内で `terraform plan -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"` を実行
+* フォルダ内で `terraform apply -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"` を実行
+
+### 破棄する場合  
+* フォルダ内で `terraform destroy -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"` を実行 
+
 ## 環境
 * Proxmox VE 8.2.2
 * Terraform v1.9.8 on windows_amd64
@@ -70,7 +89,7 @@ pveum user add terraform-prov@pve --password ${user_pass}
 pveum aclmod / -user terraform-prov@pve -role TerraformProv
 ```
 
-### provider の proxmox の接続情報を設定
+### provider の proxmox の接続情報を設定　※以下はメンテナンス中
 ※本来は環境変数などで設定すべきだが今はガバガバ
 
 modules\create_vm\main.tf
@@ -119,3 +138,12 @@ terraform apply
 ```
 terraform destroy
 ```
+
+## メモ
+```
+terraform plan -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"
+terraform apply -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"
+terraform destroy -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"
+```
+
+ssh user001@pve-vm-001

@@ -14,8 +14,8 @@ crash.*.log
 # password, private keys, and other secrets. These should not be part of version 
 # control as they are data points which are potentially sensitive and subject 
 # to change depending on the environment.
-*.tfvars
-*.tfvars.json
+# *.tfvars      # Comment out Tobotobo
+# *.tfvars.json # Comment out Tobotobo
 
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in
@@ -38,5 +38,7 @@ override.tf.json
 terraform.rc
 
 # Add Tobotobo
+*secret*.tfvars
+*secret*.tfvars.json
 !*.template.tfvars
 !*.template.tfvars.json
