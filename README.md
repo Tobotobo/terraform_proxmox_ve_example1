@@ -52,12 +52,45 @@ https://speakerdeck.com/yusuke427/terraform-x-cloud-init-de-vm-nosetutoatupuwoii
 * フォルダ名を適当に変更 ※例:pve-vm-taro
 * フォルダ内の terraform.template.tfvars を terraform.tfvars にリネーム
 * terraform.tfvars を適当に設定
-* フォルダ内で `terraform init` を実行
-* フォルダ内で `terraform plan -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"` を実行
-* フォルダ内で `terraform apply -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"` を実行
+* フォルダ内で `./cmd/terraform-init.bat` を実行
+* フォルダ内で `./cmd/terraform-plan.bat"` を実行
+* フォルダ内で `./cmd/terraform-apply.bat` を実行
 
 ### 破棄する場合  
-* フォルダ内で `terraform destroy -var-file="../../common.tfvars" -var-file="../../secrets.tfvars"` を実行 
+* フォルダ内で `./cmd/terraform-destroy.bat` を実行 
+
+### Cockpit の利用
+
+https://<VMのホスト名>.local:9090/  
+例）https://pve-vm-taro.local:9090/  
+
+※「この接続ではプライバシーが保護されません」という警告が表示される  
+　→　[証明書をインストールして Copilot の SSL を有効にする](#証明書をインストールして-copilot-の-ssl-を有効にする) を実施するか、以下の操作を実施  
+　　　・その警告画面の左下の「詳細設定」をクリック  
+　　　・XXXXX にアクセスする (安全ではありません) をクリック  
+
+### 証明書をインストールして Copilot の SSL を有効にする
+対象: Chrome、Edge　※他のブラウザは別の操作が必要かも
+
+管理者権限で powershell を起動し以下を実行  
+※scp の接続情報は要変更
+```ps1
+$tempFile = [System.IO.Path]::GetTempFileName()
+scp taro@pve-vm-taro:/etc/cockpit/ws-certs.d/0-self-signed-ca.pem "$tempFile"
+certutil -addstore "Root" "$tempFile"
+```
+
+以下のようにストアに追加されれば OK
+```ps1
+> certutil -addstore "Root" "$tempFile"
+Root "信頼されたルート証明機関"
+署名は公開キーと一致します
+証明書 "pve-vm-taro.local" がストアに追加されました。
+CertUtil: -addstore コマンドは正常に完了しました。
+```
+
+ブラウザを再起動する  
+※うまく反映されない場合は端末ごと再起動
 
 ## 詳細
 
