@@ -1,5 +1,5 @@
-module "almalinux_8_git_docker_vm" {
-    source = "../../modules/almalinux_8_git_docker"
+module "almalinux_8_cockpit_git_docker_vm" {
+    source = "../../modules/almalinux_8_cockpit_git_docker"
     vm_node       = var.vm_node
     vm_name       = var.vm_name
     vm_cores      = var.vm_cores

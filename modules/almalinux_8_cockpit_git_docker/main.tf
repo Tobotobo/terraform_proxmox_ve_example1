@@ -19,6 +19,7 @@ resource "proxmox_cloud_init_disk" "ci" {
     packages:
       - glibc-langpack-ja
       - langpacks-ja
+      - cockpit
       - avahi
       - nano
       - git
@@ -52,13 +53,14 @@ resource "proxmox_cloud_init_disk" "ci" {
         shell: /bin/bash
 
     runcmd:
+      # IPv6 無効化
       - echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf
       - echo "net.ipv6.conf.default.disable_ipv6 = 1" >> /etc/sysctl.conf
       - sysctl -p
-      - systemctl start avahi-daemon
-      - systemctl enable avahi-daemon
-      - systemctl start docker
-      - systemctl enable docker
+      # サービス起動 & 自動起動を有効化
+      - systemctl enable --now cockpit.socket
+      - systemctl enable --now avahi-daemon
+      - systemctl enable --now docker
   EOF
 }
 
