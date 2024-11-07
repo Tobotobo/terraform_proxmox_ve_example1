@@ -14,6 +14,7 @@ resource "proxmox_cloud_init_disk" "ci" {
 
     bootcmd:
       - dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      - dnf install -y epel-release
 
     package_update: true
     packages:
@@ -21,6 +22,7 @@ resource "proxmox_cloud_init_disk" "ci" {
       - langpacks-ja
       - cockpit
       - avahi
+      - nss-mdns
       - nano
       - git
       - docker-ce
