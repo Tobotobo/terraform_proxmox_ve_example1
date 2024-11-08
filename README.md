@@ -47,17 +47,19 @@ https://speakerdeck.com/yusuke427/terraform-x-cloud-init-de-vm-nosetutoatupuwoii
 * secrets.tfvars を適当に設定
 
 ### 環境作成
+※Windows の場合はスクリプトの実行に Git Bash を使ってください
+
 ![alt text](docs/images/image01.drawio.png)
 * enviroments/template/almalinux_8_git_docker_template を enviroments フォルダ内にコピー
 * フォルダ名を適当に変更 ※例:pve-vm-taro
 * フォルダ内の terraform.template.tfvars を terraform.tfvars にリネーム
 * terraform.tfvars を適当に設定
-* フォルダ内で `./cmd/terraform-init.bat` を実行
-* フォルダ内で `./cmd/terraform-plan.bat"` を実行
-* フォルダ内で `./cmd/terraform-apply.bat` を実行
+* フォルダ内で `./cmd/terraform-init.sh` を実行
+* フォルダ内で `./cmd/terraform-plan.sh"` を実行
+* フォルダ内で `./cmd/terraform-apply.sh` を実行
 
 ### 破棄する場合  
-* フォルダ内で `./cmd/terraform-destroy.bat` を実行 
+* フォルダ内で `./cmd/terraform-destroy.sh` を実行 
 
 ### Cockpit の利用
 
@@ -68,29 +70,6 @@ https://<VMのホスト名>.local:9090/
 　→　[証明書をインストールして Copilot の SSL を有効にする](#証明書をインストールして-copilot-の-ssl-を有効にする) を実施するか、以下の操作を実施  
 　　　・その警告画面の左下の「詳細設定」をクリック  
 　　　・XXXXX にアクセスする (安全ではありません) をクリック  
-
-### 証明書をインストールして Copilot の SSL を有効にする
-対象: Chrome、Edge　※他のブラウザは別の操作が必要かも
-
-管理者権限で powershell を起動し以下を実行  
-※scp の接続情報は要変更
-```ps1
-$tempFile = [System.IO.Path]::GetTempFileName()
-scp taro@pve-vm-taro:/etc/cockpit/ws-certs.d/0-self-signed-ca.pem "$tempFile"
-certutil -addstore "Root" "$tempFile"
-```
-
-以下のようにストアに追加されれば OK
-```ps1
-> certutil -addstore "Root" "$tempFile"
-Root "信頼されたルート証明機関"
-署名は公開キーと一致します
-証明書 "pve-vm-taro.local" がストアに追加されました。
-CertUtil: -addstore コマンドは正常に完了しました。
-```
-
-ブラウザを再起動する  
-※うまく反映されない場合は端末ごと再起動
 
 ## 詳細
 
@@ -156,3 +135,40 @@ pveum aclmod / -user terraform-prov@pve -role TerraformProv
 * VM を再起動
 * 再起動後 `sudo xfs_growfs /` を実行
 * `df -H` でサイズが増えていることを確認
+
+### 自己証明書　※途中
+
+#### ルートCA証明書の作成
+* pve_root_ca/root-ca-cert.conf を設定
+* pve_root_ca/cmd/generate_root_ca_cert.sh を実行
+* pve_root_ca/root-ca-cert/pve-root-ca.crt をクライアントにインストール
+
+#### サーバー証明書の作成
+※以下の pve-vm-taro は読み替えてください
+* environments/pve-vm-taro/server-cert.conf を設定
+* environments/pve-vm-taro/cmd/generate_server_cert.sh を実行
+* environments/pve-vm-taro/server-cert に以下のファイルが生成される
+  * server.crt
+  * server.csr
+  * server.key
+* scp コマンド等を用いて上記をサーバー内にコピーして使用する
+
+### 証明書をインストールして Copilot の SSL を有効にする
+対象: Chrome、Edge　※他のブラウザは別の操作が必要かも
+
+* /etc/cockpit/ws-certs.d の中が以下になるようにサーバー証明書を配置する
+  * server.crt
+  * server.csr
+  * server.key
+  * ※元々格納されていた 0-self-signed-ca.pem, 0-self-signed.cert, 0-self-signed.key は削除
+* Cockpit を再起動　※一応再起動しなくても認識するらしいが念のため
+  ```
+  sudo systemctl restart cockpit
+  ```
+* クライアントにルートCS証明書 pve_root_ca/root-ca-cert/pve-root-ca.crt をインストール
+  * コマンドの場合
+    ```
+    certutil -addstore "Root" ./pve-root-ca.crt
+    ```
+  * 画面の場合はぐぐって
+  * どちらも反映にブラウザアの再起動が必要　※うまく反映されない場合は端末ごと再起動
