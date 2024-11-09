@@ -12,27 +12,49 @@ if [[ ${BASH_VERSINFO[0]} -ge 4 && ${BASH_VERSINFO[1]} -ge 4 ]]; then
     shopt -s inherit_errexit # '-e'オプションをサブシェルや関数内にも適用する
 fi
 
+# 初期のカレントディレクトリを保存
+initial_dir_path=$(pwd)
+
+# スクリプト終了時に初期のカレントディレクトリに戻るよう設定
+trap 'cd "${initial_dir_path}"' EXIT
+
+# このスクリプトがあるフォルダへのパス
+script_dir_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# このスクリプトがあるフォルダにカレントディレクトリを設定
+# cd "${script_dir_path}"
+
 # 各種パス
-script_dir_path="$(dirname "$0")"                   # このスクリプトがあるフォルダへのパス
 env_dir_path="$(realpath "${script_dir_path}/..")"  # このスクリプトの操作対象の環境のパス
 root_dir_path="$(realpath "${env_dir_path}/../..")" # プロジェクトルート
 root_ca_dir_path="${root_dir_path}/pve_root_ca"
-
-# 現在のディレクトリを保存し、root_ca_dir_path に移動
-pushd "${root_ca_dir_path}" || exit 1
-
-# エラートラップを設定（スクリプト終了時に popd を必ず実行する）
-trap 'popd' EXIT
-
 wk_dir_path="${env_dir_path}/server-cert"
 
 key_path="${wk_dir_path}/server.key" # 秘密鍵ファイル
 csr_path="${wk_dir_path}/server.csr" # 証明書署名要求ファイル
 crt_path="${wk_dir_path}/server.crt" # 証明書ファイル
 
+server_cert_conf_path="${env_dir_path}/server-cert.conf"
+sign_server_cert_conf_path="${root_ca_dir_path}/sign-server-cert.conf"
+
+# チェックするファイルのパスのリスト
+required_files=(
+    "${server_cert_conf_path}"
+    "${sign_server_cert_conf_path}"
+)
+
+# 各ファイルの存在をチェック
+for file_path in "${required_files[@]}"; do
+    if [ ! -f "${file_path}" ]; then
+        echo -e "\e[31mERROR: 必須ファイル ${file_path} が存在しません。\e[m"
+        exit 1
+    fi
+done
+
+# 作業フォルダが既に存在する場合は生成を行わない
 if [ -d ${wk_dir_path} ]; then
-    echo -e "\e[31mERROR: ${wk_dir_path} は既に存在します。\e[m"
-    exit 1
+    echo -e "\e[33mWARN: ${wk_dir_path} は既に存在するため、処理をスキップしました。生成は行われていません。\e[m"
+    exit 0
 fi
 
 mkdir -p "${wk_dir_path}"
@@ -50,7 +72,7 @@ openssl genpkey \
 #   -config: 設定ファイルを指定（サーバー証明書の詳細設定用）
 #   -key:    使用する秘密鍵ファイルのパス
 #   -out:    生成したCSRを保存するファイルパス
-openssl req -new -config "${env_dir_path}/server-cert.conf" \
+openssl req -new -config "${server_cert_conf_path}" \
     -key "${key_path}" \
     -out "${csr_path}"
 
@@ -60,10 +82,10 @@ openssl req -new -config "${env_dir_path}/server-cert.conf" \
 #   -in:         証明書署名要求（CSR）のファイルパス
 #   -out:        発行した証明書を保存するファイルパス
 #   -extensions: 証明書に追加する拡張設定（server_ext）
-openssl ca -batch -config "./sign-server-cert.conf" \
+cd "${root_ca_dir_path}" # ※sign-server-cert.conf の設定が pve_root_ca 直下で実行される前提の設定のため
+openssl ca -batch -config "${sign_server_cert_conf_path}" \
     -in "${csr_path}" \
     -out "${crt_path}" \
     -extensions server_ext
 
 echo "完了"
-    

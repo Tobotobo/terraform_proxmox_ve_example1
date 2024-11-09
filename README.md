@@ -1,5 +1,7 @@
 # terraform_proxmox_ve_example1
 
+## 留意：ドキュメント整備中！
+
 ## 概要
 * Terraform を使って Proxmox VE に QEMU の VM インスタンスを立ち上げる
 * Cloud-init を使う

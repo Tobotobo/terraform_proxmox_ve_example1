@@ -12,12 +12,28 @@ if [[ ${BASH_VERSINFO[0]} -ge 4 && ${BASH_VERSINFO[1]} -ge 4 ]]; then
     shopt -s inherit_errexit # '-e'オプションをサブシェルや関数内にも適用する
 fi
 
-# 各種パス
-script_dir_path="$(dirname "$0")"                   # このスクリプトがあるフォルダへのパス
-env_dir_path="$(realpath "${script_dir_path}/..")"  # このスクリプトの操作対象の環境のパス
-root_dir_path="$(realpath "${env_dir_path}/../..")" # プロジェクトルート
+# 初期のカレントディレクトリを保存
+initial_dir_path=$(pwd)
 
-terraform -chdir="${env_dir_path}" \
-    apply \
-    -var-file="${root_dir_path}/common.tfvars" \
-    -var-file="${root_dir_path}/secrets.tfvars"
+# スクリプト終了時に初期のカレントディレクトリに戻るよう設定
+trap 'cd "${initial_dir_path}"' EXIT
+
+# このスクリプトがあるフォルダへのパス
+script_dir_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# このスクリプトがあるフォルダにカレントディレクトリを設定
+# cd "${script_dir_path}"
+
+# 各種パス
+root_dir_path="$(realpath "${script_dir_path}/..")"
+template_dir_path="${root_dir_path}/environments/templates/almalinux_8_cockpit_git_docker_template"
+env_dir_path="${root_dir_path}/environments/$1"
+
+if [ -d ${env_dir_path} ]; then
+    echo -e "\e[31mERROR: ${env_dir_path} は既に存在します。\e[m"
+    exit 1
+fi
+
+cp -r "${template_dir_path}" "${env_dir_path}"
+
+echo "完了"

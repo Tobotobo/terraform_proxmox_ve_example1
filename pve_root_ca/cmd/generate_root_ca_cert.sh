@@ -12,17 +12,21 @@ if [[ ${BASH_VERSINFO[0]} -ge 4 && ${BASH_VERSINFO[1]} -ge 4 ]]; then
     shopt -s inherit_errexit # '-e'オプションをサブシェルや関数内にも適用する
 fi
 
+# 初期のカレントディレクトリを保存
+initial_dir_path=$(pwd)
+
+# スクリプト終了時に初期のカレントディレクトリに戻るよう設定
+trap 'cd "${initial_dir_path}"' EXIT
+
+# このスクリプトがあるフォルダへのパス
+script_dir_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# このスクリプトがあるフォルダにカレントディレクトリを設定
+# cd "${script_dir_path}"
+
 # 各種パス
-script_dir_path="$(dirname "$0")"                   # このスクリプトがあるフォルダへのパス
 root_ca_dir_path="$(realpath "${script_dir_path}/..")"
-
-# 現在のディレクトリを保存し、root_ca_dir_path フォルダに移動
-pushd "${root_ca_dir_path}" || exit 1
-
-# エラートラップを設定（スクリプト終了時に popd を必ず実行する）
-trap 'popd' EXIT
-
-wk_dir_path="./root-ca-cert"
+wk_dir_path="${root_ca_dir_path}/root-ca-cert"
 
 certs_dir_path="${wk_dir_path}/certs"
 db_dir_path="${wk_dir_path}/db"
@@ -31,10 +35,27 @@ private_dir_path="${wk_dir_path}/private"
 key_path="${private_dir_path}/pve-root-ca.key" # 秘密鍵ファイル
 csr_path="${wk_dir_path}/pve-root-ca.csr"      # 証明書署名要求ファイル
 crt_path="${wk_dir_path}/pve-root-ca.crt"      # 証明書ファイル
+pem_path="${wk_dir_path}/pve-root-ca.pem"      # 証明書ファイル(PEM) ※Android など pem でないと認識しないものがある 
 
+root_ca_cert_conf_path="${root_ca_dir_path}/root-ca-cert.conf"
+
+# チェックするファイルのパスのリスト
+required_files=(
+    "${root_ca_cert_conf_path}"
+)
+
+# 各ファイルの存在をチェック
+for file_path in "${required_files[@]}"; do
+    if [ ! -f "${file_path}" ]; then
+        echo -e "\e[31mERROR: 必須ファイル ${file_path} が存在しません。\e[m"
+        exit 1
+    fi
+done
+
+# 作業フォルダが既に存在する場合は生成を行わない
 if [ -d ${wk_dir_path} ]; then
-    echo -e "\e[31mERROR: ${wk_dir_path} は既に存在します。\e[m"
-    exit 1
+    echo -e "\e[33mWARN: ${wk_dir_path} は既に存在するため、処理をスキップしました。生成は行われていません。\e[m"
+    exit 0
 fi
 
 # 必要なディレクトリ（証明書、データベース、秘密鍵用）を作成
@@ -53,7 +74,7 @@ openssl rand -hex 16 > "${db_dir_path}/serial"
 #   -out:    生成したCSRを保存するファイルパス
 #   -keyout: 生成した秘密鍵を保存するファイルパス  
 #   -nodes:  秘密鍵をパスフレーズなしで生成
-openssl req -new -config "./root-ca-cert.conf" \
+openssl req -new -config "${root_ca_cert_conf_path}" \
     -out "${csr_path}" \
     -keyout "${key_path}" \
     -nodes
@@ -62,9 +83,18 @@ openssl req -new -config "./root-ca-cert.conf" \
 #   -in:         署名に使用するCSRのファイルパス
 #   -out:        生成した証明書を保存するファイルパス
 #   -extensions: 証明書に追加する拡張設定（root-ca-cert.conf内で定義）
-openssl ca -selfsign -batch -config "./root-ca-cert.conf" \
+openssl ca -selfsign -batch -config "${root_ca_cert_conf_path}" \
     -in "${csr_path}" \
     -out "${crt_path}" \
     -extensions req_ext
+
+# 証明書をPEM形式に変換する
+#   -in:       変換元の証明書ファイルのパス
+#   -out:      変換後のPEM形式の証明書を保存するファイルパス
+#   -outform:  出力形式としてPEMを指定
+openssl x509 \
+    -in "${crt_path}" \
+    -out "${pem_path}" \
+    -outform PEM
 
 echo "完了"
