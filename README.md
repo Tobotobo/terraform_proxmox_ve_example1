@@ -1,6 +1,66 @@
 # terraform_proxmox_ve_example1
 
-## 留意：ドキュメント整備中！
+## 留意：ドキュメント整備中！※今は以下のメモを参照
+
+ポイント
+・オレオレルートCS証明書とサーバー証明書の作成とVMへの組み込みを追加
+・オレオレルートCS証明書をクライアントに追加することで、その端末はProxmoxVEのWEB管理画面やCockpitでSSLが有効になる
+・VMを構築すると自動でサーバー証明書がVM内の /var/opt/pve-vm/server_sert に 発行されるので Docker 等でうまいこと使う
+
+構成補足
+cmd                  … templates からのコピーを補助するスクリプト
+environments
+    templates
+    pve-vm-taro
+        cmd          … init.sh や terraform-apply.sh など
+        server_cert  … サーバー証明書　cmd/init.sh で生成　※server-sert.conf が必要
+        ssh_host_key … SSH用 cmd/init.sh で生成 ※保持しておかないとVMを再構築すると鍵が変わって面倒だから
+    pve-vm-hanako
+modules
+nodes
+    templates
+    pve-main
+        cmd          … generate_server_cert.sh
+        server_cert  … オレオレサーバー証明書　※ProxmoxVEのWEB管理画面からカスタム証明書としてアップロード
+pve_root_ca
+    cmd              … generate_root_ca_cert.sh 
+    root_ca_cert     … オレオレルートCS証明書　cmd/generate_root_ca_cert.sh で生成
+
+前提
+・AlmaLinux 8 の汎用クラウド(Cloud-init)イメージをテンプレートに登録 が実施済みであること
+・操作対象の Proxmox VE に Terraform 用のユーザーとロールを作成 が実施済みであること
+
+導入時の作業
+・common.template.tfvars をコピーし common.tfvars にリネーム
+・common.tfvars を適当に設定
+・secrets.template.tfvars をコピーし secrets.tfvars にリネーム
+・secrets.tfvars を適当に設定
+・root-ca-sert.conf を適当に設定
+・pve_root_ca/cmd/generate_root_ca_cert.sh を実行
+　→　オレオレルートCS証明書が作成される
+・cmd/create_node.sh XXXXX を実行　※作成するフォルダ名
+・↑のフォルダ内：server-cert.template.conf　を　server-cert.conf　にリネーム
+・↑のフォルダ内：server-cert.conf　を適当に設定
+・↑のフォルダ内：cmd/generate_server_cert.sh を実行
+　→　ProxmoxVEのWEB管理画面用のサーバー証明書生成
+　→　データセンター→対象ノードを選択→証明書→カスタム証明書をアップロード
+
+環境作成
+・cmd/create_env_almalinux_8_cockpit_git_docker.sh XXXXX を実行　※作成するフォルダ名
+・↑のフォルダ内：server-cert.template.conf　を　server-cert.conf　にリネーム
+・↑のフォルダ内：server-cert.conf　を適当に設定
+・↑のフォルダ内：terraform.template.tfvars を terraform.tfvars にリネーム
+・↑のフォルダ内：terraform.tfvars を適当に設定
+・↑のフォルダ内：cmd/init.sh を実行
+　→　オレオレサーバー証明書作成、SSH用証明書作成、terraform init が実行される
+・↑のフォルダ内：cmd/terraform-plan.sh を実行
+・↑のフォルダ内：cmd/terraform-apply.sh を実行
+
+
+
+
+
+
 
 ## 概要
 * Terraform を使って Proxmox VE に QEMU の VM インスタンスを立ち上げる
